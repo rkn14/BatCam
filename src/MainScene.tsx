@@ -11,19 +11,40 @@ import { LookAtMotion } from "./batcam/motions/LookAtMotion";
 import { ShakeMotion } from "./batcam/motions/ShakeMotion";
 import { Easing } from "./batcam/utils/Easing";
 import PerlinTerrain from "./components/PerlinTerrain";
+import { CircularTarget } from "./components/CircularTarget";
+import { FollowBehavior } from "./batcam/behaviors/FollowBehavior";
 
 function MainScene() {
 	const { scene, camera, gl } = useThree();
 	const batcamRef = useRef<BatCam>();
+	const targetRef = useRef<THREE.Mesh>(null);
 
 	useEffect(() => {
 		batcamRef.current = new BatCam(camera, gl.domElement, scene);
 		batcamRef.current.setBehavior(
-			new OrbitBehavior(camera, { useTargetOrientation: true }),
+			new FollowBehavior(camera, {distance: 10, target:targetRef.current!})
+			/*new OrbitBehavior(camera, { 
+				distance: 10,
+				minDistance: 5,
+				maxDistance: 20,
+				polarAngle: Math.PI / 4,
+				minPolarAngle: 0,
+				maxPolarAngle: Math.PI / 2,
+				azimuthAngle: 0,
+				minAzimuthAngle: -Infinity,
+				maxAzimuthAngle: Infinity,
+				target: new THREE.Vector3(0, 0, 0),
+				angleLerp: 0.1,
+				distanceLerp: 0.1,
+				translationLerp: 0.1,
+				maxTranslationDistance: new THREE.Vector2(10, 10),
+				useTargetOrientation: true
+			}),*/
 		);
 
 		window.addEventListener("keyup", (e) => {
-			if (e.key.toLowerCase() === " ") {
+			if (e.key === " ") {
+				// Translation aléatoire
 				batcamRef.current?.playMotion(
 					new TranslationMotion({
 						endPos: new THREE.Vector3(
@@ -36,6 +57,7 @@ function MainScene() {
 					}),
 				);
 			} else if (e.key === "Enter") {
+				// Orbite aléatoire
 				batcamRef.current?.playMotion(
 					new OrbitMotion({
 						target: new THREE.Vector3(0, 0, 0),
@@ -46,7 +68,7 @@ function MainScene() {
 						ease: Easing.easeInOutCubic
 					}),
 				);
-			} else if (e.key.toLowerCase() === "i") {
+			} else if (e.key.toLowerCase() === "d") {
 				// DollyZoom effect
 				batcamRef.current?.playMotion(
 					new DollyZoomMotion({
@@ -57,7 +79,7 @@ function MainScene() {
 						ease: Easing.easeInOutQuad
 					}),
 				);
-			} else if (e.key.toLowerCase() === "o") {
+			} else if (e.key.toLowerCase() === "l") {
 				// LookAt - regarde la sphère bleue
 				batcamRef.current?.playMotion(
 					new LookAtMotion({
@@ -66,7 +88,7 @@ function MainScene() {
 						ease: Easing.easeInOutCubic
 					}),
 				);
-			} else if (e.key.toLowerCase() === "p") {
+			} else if (e.key.toLowerCase() === "s") {
 				// Shake effect
 				batcamRef.current?.playMotion(
 					new ShakeMotion({
@@ -78,9 +100,25 @@ function MainScene() {
 						ease: Easing.easeOutQuad
 					}),
 				);
+			} else if (e.key.toLowerCase() === "f") {
+				// Active le FollowBehavior sur la cible circulaire
+				if (batcamRef.current && targetRef.current) {
+					const followConfig = {
+						distance: 15,
+						minDistance: 10,
+						maxDistance: 20,
+						verticalAngle: 30,
+						followRotation: true,
+						positionSmoothing: 0.05,
+						rotationSmoothing: 0.05,
+						enableCollisions: true,
+						target: targetRef.current
+					};
+					batcamRef.current.setBehavior(new FollowBehavior(camera, followConfig));
+				}
 			}
 		});
-	}, [camera, scene, gl]);
+	}, [camera, scene, gl, targetRef]);
 
 	return (
 		<>
@@ -93,26 +131,39 @@ function MainScene() {
 				depth={100}
 				maxHeight={20}
 				position={[0, -10, 0]}
-				rotation={[-Math.PI / 2, 0, 0]} // Pour avoir le terrain horizontal
-				>
+				rotation={[-Math.PI / 2, 0, 0]} 
+			>
 				<meshStandardMaterial color="#AABB22" metalness={0.1} roughness={0.8}/>
-				</PerlinTerrain>
-			<mesh position={[0, 0, 0]} scale={[20, .2, 20]} castShadow receiveShadow visible={false}>
-				<boxGeometry />
-				<meshStandardMaterial color={0xcccccc} />
-			</mesh>
-			<mesh position={[0, 0, 0]} castShadow receiveShadow>
-				<boxGeometry />
-				<meshStandardMaterial color={0xcccccc} />
-			</mesh>
-			<mesh position={[0, 1, 0]} scale={0.5} castShadow receiveShadow>
-				<sphereGeometry />
-				<meshStandardMaterial color={0x0000ff} />
-			</mesh>
-			<mesh position={[0, 1, 0.5]} scale={0.15} castShadow receiveShadow>
-				<sphereGeometry />
-				<meshStandardMaterial color={0xff0000} />
-			</mesh>
+			</PerlinTerrain>
+
+			{/* Obstacles pour tester les collisions */}
+			<group>
+				<mesh position={[5, 0, 5]} scale={[2, 4, 2]} castShadow receiveShadow>
+					<boxGeometry />
+					<meshStandardMaterial color="#666666" />
+				</mesh>
+				<mesh position={[-5, 0, -5]} scale={[2, 3, 2]} castShadow receiveShadow>
+					<boxGeometry />
+					<meshStandardMaterial color="#666666" />
+				</mesh>
+				<mesh position={[0, 0, -8]} scale={[4, 2, 2]} castShadow receiveShadow>
+					<boxGeometry />
+					<meshStandardMaterial color="#666666" />
+				</mesh>
+			</group>
+
+			{/* Cible circulaire */}
+			{batcamRef.current && (
+				<CircularTarget
+					ref={targetRef}
+					radius={10}
+					speed={0.5}
+					height={2}
+					sphereRadius={0.5}
+					color="#ff0000"
+					batCam={batcamRef.current}
+				/>
+			)}
 		</>
 	);
 }
