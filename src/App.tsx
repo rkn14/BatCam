@@ -6,7 +6,7 @@ import MainScene from "./MainScene";
 function App() {
 	return (
 		<div className="App relative w-full h-full bg-black">
-			<Canvas className="w-full h-full">
+			<Canvas className="w-full h-full" shadows>
 				<MainScene />
 			</Canvas>
 		</div>

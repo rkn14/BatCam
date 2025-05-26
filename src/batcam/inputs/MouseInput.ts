@@ -16,8 +16,8 @@ export class MouseInput extends InputBase {
 
 	/** Vitesses (modifiables) */
 	public rotationSpeed = 200;
-	public translationSpeed = 50;
-	public wheelSpeed = 3;
+	public translationSpeed = 8;
+	public wheelSpeed = 0.6;
 
 	constructor(batCam: BatCam) {
 		super(batCam);
