@@ -13,16 +13,22 @@ import { Easing } from "./batcam/utils/Easing";
 import PerlinTerrain from "./components/PerlinTerrain";
 import { CircularTarget } from "./components/CircularTarget";
 import { FollowBehavior } from "./batcam/behaviors/FollowBehavior";
+import { LookAtBehavior } from "./batcam/behaviors/LookAtBehavior";
 
 function MainScene() {
 	const { scene, camera, gl } = useThree();
 	const batcamRef = useRef<BatCam>();
-	const targetRef = useRef<THREE.Mesh>(null);
+	const targetRef = useRef(null);
 
 	useEffect(() => {
+		console.log("ini", targetRef.current);
+		if(!targetRef.current)
+			return;
+		
 		batcamRef.current = new BatCam(camera, gl.domElement, scene);
 		batcamRef.current.setBehavior(
-			new FollowBehavior(camera, {distance: 10, target:targetRef.current!})
+			new LookAtBehavior(camera, {target: targetRef.current})
+			//new FollowBehavior(camera, {distance: 10, target:targetRef.current!})
 			/*new OrbitBehavior(camera, { 
 				distance: 10,
 				minDistance: 5,
@@ -41,6 +47,10 @@ function MainScene() {
 				useTargetOrientation: true
 			}),*/
 		);
+	},[targetRef.current]);
+
+	useEffect(() => {
+	
 
 		window.addEventListener("keyup", (e) => {
 			if (e.key === " ") {
@@ -118,7 +128,7 @@ function MainScene() {
 				}
 			}
 		});
-	}, [camera, scene, gl, targetRef]);
+	}, [camera, scene, gl]);
 
 	return (
 		<>
@@ -153,7 +163,7 @@ function MainScene() {
 			</group>
 
 			{/* Cible circulaire */}
-			{batcamRef.current && (
+
 				<CircularTarget
 					ref={targetRef}
 					radius={10}
@@ -161,9 +171,8 @@ function MainScene() {
 					height={2}
 					sphereRadius={0.5}
 					color="#ff0000"
-					batCam={batcamRef.current}
 				/>
-			)}
+			
 		</>
 	);
 }

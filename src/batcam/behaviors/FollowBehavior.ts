@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BehaviorBase } from './BehaviorBase';
 import type { BatCam } from '../BatCam';
-import { clamp } from '../utils/MathUtils';
+import { clamp, calculateLookAtQuaternion, smoothPosition, smoothRotation, calculateOrbitPosition, calculateDirection } from '../utils/MathUtils';
 import type { Inputs } from '../inputs/InputBase';
 
 export interface FollowConfig {
@@ -85,15 +85,6 @@ export class FollowBehavior extends BehaviorBase<FollowConfig> {
 		// Mettre à jour la position cible
 		this.targetPosition.copy(this.config.target.position);
 
-		// Calculer l'angle vertical en radians
-		const verticalRad = THREE.MathUtils.degToRad(
-			clamp(
-				this.config.verticalAngle || 30,
-				this.config.minVerticalAngle || 0,
-				this.config.maxVerticalAngle || 89
-			)
-		);
-
 		// Si on suit la rotation
 		let horizontalAngle = 0;
 		if (this.config.followRotation) {
@@ -109,11 +100,12 @@ export class FollowBehavior extends BehaviorBase<FollowConfig> {
 		);
 
 		// Position de base derrière la cible
-		this.desiredPosition.set(
-			-Math.cos(verticalRad) * Math.cos(horizontalAngle) * distance,
-			Math.sin(verticalRad) * distance,
-			-Math.cos(verticalRad) * Math.sin(horizontalAngle) * distance
-		).add(this.targetPosition);
+		this.desiredPosition = calculateOrbitPosition(
+			this.targetPosition,
+			distance,
+			this.config.verticalAngle || 30,
+			horizontalAngle
+		);
 
 		// Appliquer le verrouillage de hauteur si nécessaire
 		if (this.config.lockHeight) {
@@ -133,7 +125,7 @@ export class FollowBehavior extends BehaviorBase<FollowConfig> {
 		if (!this.config.target) return;
 
 		// Direction de la caméra vers la cible
-		const directionToTarget = this.targetPosition.clone().sub(this.desiredPosition).normalize();
+		const directionToTarget = calculateDirection(this.desiredPosition, this.targetPosition);
 		
 		// Configurer le raycaster
 		this.raycaster.set(this.targetPosition, directionToTarget.negate());
@@ -160,13 +152,11 @@ export class FollowBehavior extends BehaviorBase<FollowConfig> {
 		if (!this.config.target) return;
 		
 		// Calculer la rotation pour regarder la cible
-		const lookAtMatrix = new THREE.Matrix4();
-		lookAtMatrix.lookAt(this.desiredPosition, this.targetPosition, this.camera.up);
-		this.desiredRotation.setFromRotationMatrix(lookAtMatrix);
+		this.desiredRotation = calculateLookAtQuaternion(this.desiredPosition, this.targetPosition, this.camera.up);
 		
 		// Appliquer le lissage à la rotation
 		const rotationSmoothing = this.config.rotationSmoothing || 0.1;
-		this.nextQuaternion.slerp(this.desiredRotation, rotationSmoothing);
+		this.nextQuaternion = smoothRotation(this.camera.quaternion, this.desiredRotation, rotationSmoothing);
 	}
 
 	update(delta: number): void {
@@ -177,7 +167,7 @@ export class FollowBehavior extends BehaviorBase<FollowConfig> {
 
 		// Appliquer le lissage à la position
 		const positionSmoothing = this.config.positionSmoothing || 0.1;
-		this.camera.position.lerp(this.desiredPosition, positionSmoothing);
+		this.camera.position.copy(smoothPosition(this.camera.position, this.desiredPosition, positionSmoothing));
 
 		// Mettre à jour la rotation
 		this.lookAtTarget();

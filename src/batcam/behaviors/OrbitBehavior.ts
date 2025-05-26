@@ -2,6 +2,7 @@
 import type { Inputs } from "../inputs/InputBase";
 import { BehaviorBase } from "./BehaviorBase";
 import * as THREE from "three";
+import { clamp, calculateLookAtQuaternion, smoothPosition, smoothRotation, calculateSphericalAngles, calculateOrbitPosition } from '../utils/MathUtils';
 
 export interface OrbitConfig {
 	minDistance: number;
@@ -101,9 +102,9 @@ export class OrbitBehavior extends BehaviorBase<OrbitConfig> {
 		this._targetDistance = this.config.distance;
 
 		// angles
-		const spherical = new THREE.Spherical().setFromVector3(offset);
-		this.config.polarAngle = spherical.phi;
-		this.config.azimuthAngle = spherical.theta;
+		const angles = calculateSphericalAngles(offset);
+		this.config.polarAngle = angles.phi;
+		this.config.azimuthAngle = angles.theta;
 
 		this._targetPolar = this.config.polarAngle;
 		this._targetAzimuth = this.config.azimuthAngle;
@@ -124,12 +125,12 @@ export class OrbitBehavior extends BehaviorBase<OrbitConfig> {
 		this._targetAzimuth -= THREE.MathUtils.degToRad(inputs.primaryRotation.y);
 
 		// Clamp angles
-		this._targetPolar = THREE.MathUtils.clamp(
+		this._targetPolar = clamp(
 			this._targetPolar,
 			this.config.minPolarAngle,
 			this.config.maxPolarAngle,
 		);
-		this._targetAzimuth = THREE.MathUtils.clamp(
+		this._targetAzimuth = clamp(
 			this._targetAzimuth,
 			this.config.minAzimuthAngle,
 			this.config.maxAzimuthAngle,
@@ -137,7 +138,7 @@ export class OrbitBehavior extends BehaviorBase<OrbitConfig> {
 
 		// Distance (zoom)
 		this._targetDistance -= inputs.primaryTranslation.z;
-		this._targetDistance = THREE.MathUtils.clamp(
+		this._targetDistance = clamp(
 			this._targetDistance,
 			this.config.minDistance,
 			this.config.maxDistance,
@@ -149,12 +150,12 @@ export class OrbitBehavior extends BehaviorBase<OrbitConfig> {
 			this._targetOffset.y += inputs.primaryTranslation.y;
 			
 			// Clamp translations
-			this._targetOffset.x = THREE.MathUtils.clamp(
+			this._targetOffset.x = clamp(
 				this._targetOffset.x,
 				-this.config.maxTranslationDistance.x,
 				this.config.maxTranslationDistance.x
 			);
-			this._targetOffset.y = THREE.MathUtils.clamp(
+			this._targetOffset.y = clamp(
 				this._targetOffset.y,
 				-this.config.maxTranslationDistance.y,
 				this.config.maxTranslationDistance.y
@@ -196,13 +197,12 @@ export class OrbitBehavior extends BehaviorBase<OrbitConfig> {
 		);
 
 		// Calculer nouvelle position
-		const spherical = new THREE.Spherical(
+		const localOffset = calculateOrbitPosition(
+			targetPos,
 			this.config.distance,
-			this.config.polarAngle,
-			this.config.azimuthAngle,
+			THREE.MathUtils.radToDeg(this.config.polarAngle),
+			this.config.azimuthAngle
 		);
-		const localOffset = new THREE.Vector3().setFromSpherical(spherical);
-		localOffset.applyMatrix4(this._getTargetMatrix());
 
 		// Calculer les vecteurs de translation relatifs à l'orientation
 		const right = new THREE.Vector3(1, 0, 0);
@@ -222,10 +222,7 @@ export class OrbitBehavior extends BehaviorBase<OrbitConfig> {
 
 		// Affecter nextPosition et nextQuaternion
 		this.nextPosition.copy(newPos);
-		const quat = new THREE.Quaternion().setFromRotationMatrix(
-			new THREE.Matrix4().lookAt(newPos, translatedTarget, this.camera.up),
-		);
-		this.nextQuaternion.copy(quat);
+		this.nextQuaternion = calculateLookAtQuaternion(newPos, translatedTarget, this.camera.up);
 	}
 
 	dispose(): void {

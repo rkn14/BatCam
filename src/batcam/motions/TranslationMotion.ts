@@ -3,6 +3,7 @@ import { Easing, type EasingFn } from "../utils/Easing";
 import { MotionBase } from "./MotionBase";
 import type { BatCam } from "../BatCam";
 import * as THREE from "three";
+import { calculateLookAtQuaternion } from '../utils/MathUtils';
 
 export interface TranslationConfig {
 	endPos: THREE.Vector3;
@@ -62,9 +63,7 @@ export class TranslationMotion extends MotionBase<TranslationConfig> {
 			} else {
 				throw new Error("Invalid lookAt type"); // sécurité supplémentaire
 			}
-			const m = new THREE.Matrix4();
-			m.lookAt(this.nextPosition, lookAtPos, new THREE.Vector3(0, 1, 0));
-			this.nextQuaternion = new THREE.Quaternion().setFromRotationMatrix(m);
+			this.nextQuaternion = calculateLookAtQuaternion(this.nextPosition, lookAtPos);
 		}
 	}
 	onComplete(fn: () => void): void {

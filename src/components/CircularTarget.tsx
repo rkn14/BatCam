@@ -9,9 +9,7 @@ interface CircularTargetProps {
     speed?: number;          // Vitesse de rotation (radians par seconde)
     height?: number;         // Hauteur de la sphère
     sphereRadius?: number;   // Rayon de la sphère
-    color?: string;         // Couleur de la sphère
-    followConfig?: Partial<FollowConfig>; // Configuration du FollowBehavior
-    batCam: BatCam;        // Instance de BatCam
+    color?: string;         // Couleur de la sphère      // Instance de BatCam
 }
 
 export const CircularTarget = forwardRef<THREE.Mesh, CircularTargetProps>(({
@@ -20,8 +18,6 @@ export const CircularTarget = forwardRef<THREE.Mesh, CircularTargetProps>(({
     height = 2,
     sphereRadius = 0.5,
     color = '#ff0000',
-    followConfig,
-    batCam
 }, ref) => {
     const time = useRef(0);
     const internalRef = useRef<THREE.Mesh>(null);
